@@ -22,7 +22,7 @@ SKIP: {
   $mech->snapshot_comment("FOO BAR BAZ UNLIKELY");
   $mech->snapshot(undef,"foo");
   is scalar (@foo = glob(File::Spec->catfile($snapshot_dir, "*.html"))), 3;
-  open GREP, File::Spec->catfile($snapshot_dir,"debugfoo.html")
+  open GREP, File::Spec->catfile($snapshot_dir,"debug_foo-1.html")
     or die "can't open debug HTML file";
   my $hits;
   while (defined($_ = <GREP>)) { 

@@ -1,12 +1,13 @@
-.cvsignore
 Changes
 lib/WWW/Mechanize/Plugin/Snapshot.pm
 Makefile.PL
+man/man3/WWW::Mechanize::Plugin::Snapshot.3
 MANIFEST
 META.yml			# Will be created by "make dist"
 README
 t/00.load.t
 t/01basic.t
 t/02preset.t
+t/03leader.t
 t/pod-coverage.t
 t/pod.t

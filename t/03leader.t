@@ -1,10 +1,11 @@
-use Test::More tests=>3;
+use Test::More tests=>5;
 
 use File::Spec;
 use WWW::Mechanize::Pluggable;
 
 my $mech = new WWW::Mechanize::Pluggable;
 $mech->agent_alias("Mac Safari");
+$mech->snap_prefix("http://myserver.com/snap");
 
 SKIP: {
   skip "No TMPDIR/TMP environment variable set", 3
@@ -18,10 +19,12 @@ SKIP: {
     unlink $_;
   }
   my @foo;
-  $mech->snapshot("Home sweet home");
+  my $location = $mech->snapshot("Home sweet home");
   is scalar (@foo = glob(File::Spec->catfile($snapshot_dir, "*-?.html"))), 3;
+  like $location, qr{http://myserver.com/snap/run_.*?/frame_.*?.html$}, "right name";
 
-  $mech->snapshot("Zorch sweet zorch", "zorch");
+  $location = $mech->snapshot("Zorch sweet zorch", "zorch");
   is scalar (@foo = glob(File::Spec->catfile($snapshot_dir, "*zorch-?.html"))), 3;
+  like $location, qr{http://myserver.com/snap/run_.*?/frame_.*?.html$}, "right name";
 }
 

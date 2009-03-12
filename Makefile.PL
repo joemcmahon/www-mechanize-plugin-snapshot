@@ -14,6 +14,7 @@ WriteMakefile(
         'Data::Dumper' => 0,
         'Text::Template' => 0,
         'File::Path' => 0,
+        'File::Spec' => 0,
         'WWW::Mechanize::Pluggable'    => 0.09,
     },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },

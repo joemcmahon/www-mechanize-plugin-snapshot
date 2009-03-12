@@ -25,7 +25,7 @@ To install this module, run the following commands:
 DEPENDENCIES
 
 Class::Accessor::Fast, Data::Dumper, Text::Template,
-Inline::Files.
+Inline::Files, File::Spec, File::Path.
 
 
 COPYRIGHT AND LICENCE

@@ -1,5 +1,47 @@
 Revision history for WWW-Mechanize-Plugin-Snapshot
 
+0.12  Fri Dec  2 16:46:23 PST 2005
+	- Code is still too fast. (This is a problem?!)
+	  Changed to using a version counter that adds 
+	  a -1, -2, etc. to the filename instead of 
+          depending on the program being "slow enough"
+
+0.11  Fri Dec  2 15:49:28 PST 2005
+	- change colors in debug to something less loud.
+	- Add millisecods to timestamp (fast-running
+	  programs can clobber snapshots made close together)
+
+0.10  Fri Dec  2 13:48:04 PST 2005
+        - Reorder code to ensure that the run directory 
+	  timestamp stays consistent
+
+0.09  Fri Dec  2 12:47:29 PST 2005
+	- Fix inconsistency between snapped files and
+	  links in the frame file
+
+0.08  Thu Dec  1 11:49:09 PST 2005
+	- Fix inconsistency in filename between 
+	  generated files and references in the frame file
+
+0.07  Thu Dec  1 11:42:11 PST 2005
+	- changed method name to snap_prefix
+	  (easier to remember)
+
+0.06  Thu Dec  1 10:52:22 PST 2005
+	- Minor reorganization to simplify name generation
+	- Fix a bug with single-digit day of month
+	- Remove extraneous double-slashes from files/URLs
+	  generated with leaders
+
+0.05  Wed Nov 30 17:00:40 PST 2005
+	- added snap_leader so we can customize the
+	  file location for reporting by simple_scan
+	- new tests for snap_leader
+
+0.04  Wed Nov 30 13:17:50 2005
+	- Snap directory now timestamped per run
+	- timestamps now human-readable
+
 0.03  Tue Nov 22 13:07:30 2005
 	- remove Inline::Files dependency; not 
 	  dependable enough

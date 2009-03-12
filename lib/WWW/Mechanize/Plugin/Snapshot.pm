@@ -1,15 +1,16 @@
 package WWW::Mechanize::Plugin::Snapshot;
 
-our $VERSION = '0.03';
+our $VERSION = '0.12';
 
 use warnings;
 use strict;
 use Carp;
 
 use base qw(Class::Accessor::Fast);
-__PACKAGE__->mk_accessors(qw(_suffix snapshot_comment));
+__PACKAGE__->mk_accessors(qw(_suffix snapshot_comment sub snap_prefix _run_tag _snap_count));
 
 use File::Path;
+use File::Spec;
 use Text::Template;
 use Data::Dumper;
 
@@ -20,8 +21,8 @@ my %template = (
 <head><title>Page snapshot: [\$formatted_date]</title>
 </head>
 <frameset cols="36%,64%">
-<frame src="debug[\$suffix].html">
-<frame src="content[\$suffix].html">
+<frame src="debug_[\$suffix]-[\$snap_count].html">
+<frame src="content_[\$suffix]-[\$snap_count].html">
 </frameset>
 
 </html>
@@ -37,7 +38,7 @@ EOS
 <title>Page snapshot: debug info</title>
 <STYLE TYPE="text/css">
 <!--
-H1 { color: white; background: violet; font-size: 110%; font-family: impact, sans-serif }
+H1 { color: black; background: #eeeeee; font-size: 110%; font-family: impact, sans-serif }
 pre { font-family: courier font-size:50%}
 -->
 </STYLE>
@@ -61,40 +62,88 @@ sub init {
   *{caller() . "::_suffix"}          = \&_suffix;
   *{caller() . "::snapshot_comment"} = \&snapshot_comment;
   *{caller() . "::_mk_name"}         = \&_mk_name;
+  *{caller() . "::_mk_short_name"}   = \&_mk_short_name;
   *{caller() . "::_build_file"}      = \&_build_file;
   *{caller() . "::_template"}        = \&_template;
+  *{caller() . "::snap_prefix"}      = \&snap_prefix;
+  *{caller() . "::_run_tag"}         = \&_run_tag;
+  *{caller() . "::_snapped"}         = \&_snapped;
+  *{caller() . "::_snap_count"}      = \&_snap_count;
+}
+
+sub _snapped {
+  my ($pluggable) = @_;
+  $pluggable->_snap_count($pluggable->_snap_count()+1);
 }
 
 sub snapshots_to {
   my ($pluggable, $snap_dir) = @_;
-  unless (defined $snap_dir) {
-    unless (defined $pluggable->{SnapDirectory}) {
-      $pluggable->{SnapDirectory} = 
+
+  my $now = _pretty_time();
+  $pluggable->_suffix(_pretty_time()) 
+    unless $pluggable->_suffix();
+  $pluggable->_run_tag("run_".$pluggable->_suffix)
+    unless $pluggable->_run_tag;
+  $pluggable->_snap_count(0)
+    unless defined $pluggable->_snap_count();
+
+  if (!defined $snap_dir) {
+    # No argument, grap existing or create from
+    # defaults if possible
+    if (!defined $pluggable->{SnapDirectory}) {
+      $snap_dir = 
          $ENV{TMPDIR} || $ENV{TEMP}||
           die "No TMPDIR/TEMP defined on this system!\n";
+
+      $snap_dir =
+        File::Spec->catfile($snap_dir, $pluggable->_run_tag());
     }
     else {
-      # we have a snap directory, do nothing
+      # use the existing value
+      $snap_dir = $pluggable->{SnapDirectory};
+    }
+  }
+  else {
+    # Arg supplied, add on the timestamp
+    $snap_dir = File::Spec->catfile($snap_dir, $pluggable->_run_tag());
+  }
+
+  if (!-e $snap_dir) {
+    eval { mkpath $snap_dir };
+    if ($@) {
+      die "Couldn't create directory $snap_dir: $@\n";
     }
   }
   else {
     die "$snap_dir is not a directory\n" 
       unless -d $snap_dir;
-    $pluggable->{SnapDirectory} = $snap_dir;
   }
-  $pluggable->{SnapDirectory};
+
+  $pluggable->{SnapDirectory} = $snap_dir;
+  return $snap_dir;
 }
 
 sub snapshot {
   my ($pluggable, $comment, $suffix) = @_;
   local $_;
   my @template_text;
+  $pluggable->_snapped;
 
-  $suffix = $pluggable->_suffix($suffix||time);
+  # Use passed-in suffix if available, and 
+  # set it as the default suffix. If not,
+  # continue using the one set up in snapshots_to.
+  if (defined $suffix) {
+    $pluggable->_suffix($suffix);
+  }
+  else {
+    $suffix = $pluggable->_suffix();
+  }
 
   my $frame_file = 
     $pluggable->_build_file(name=>'frame',
-                            hash=>{suffix => $suffix},
+                            version => $pluggable->_snap_count,
+                            hash=>{suffix => $suffix,
+                                   snap_count  => $pluggable->_snap_count()},
                           );
 
   # We need to nuke stuff out of the response, but we don't want to
@@ -105,22 +154,44 @@ sub snapshot {
   delete $res{'_request'};
   
   $pluggable->_build_file(name=>'debug',
-                          hash=>{url     => $pluggable->base,
-                                 comment => ($comment || 
-                                             $pluggable->snapshot_comment || 
-                                             "No comment specified"),
-                                 content => $pluggable->content(base_href=>$pluggable->base),
-                                 req     => Dumper($pluggable->mech->{req}),
-                                 res     => Dumper(\%res),
-                                 jar     => Dumper($pluggable->cookie_jar),
+                          version => $pluggable->_snap_count,
+                          hash=>{url        => $pluggable->base,
+                                 comment    => ($comment || 
+                                                $pluggable->snapshot_comment || 
+                                                "No comment specified"),
+                                 content    => $pluggable->content(base_href=>$pluggable->base),
+                                 req        => Dumper($pluggable->mech->{req}),
+                                 res        => Dumper(\%res),
+                                 jar        => Dumper($pluggable->cookie_jar),
+                                 suffix     => $suffix,
                                 }
                          ); 
 
   $pluggable->_build_file(name=>'content',
-                          hash=>{content => $pluggable->content},
+                          version => $pluggable->_snap_count,
+                          hash=>{content    => $pluggable->content,
+                                 suffix     => $suffix,
+                                },
                           );
 
+  my $prefix = $pluggable->snap_prefix();
+   
+  if (defined $prefix) {
+    $frame_file = $prefix . "/" . $pluggable->_run_tag . "/" . 
+                  $pluggable->_mk_short_name(name=>"frame",
+                                             version=>$pluggable->_snap_count);
+  }
+  else {
+    $frame_file = $pluggable->_mk_name(name=>"frame",
+                                       version=>$pluggable->_snap_count);
+  }
+  $frame_file =~ s{(?<!http:)//}{/}gsm;
   return $frame_file;
+}
+
+sub _pretty_time {
+  my @t = split(/\s+|:/,scalar localtime);
+  return sprintf("%s-%s-%02d-%02d-%02d-%02d-%04d",@t);
 }
 
 sub _build_file {
@@ -145,10 +216,10 @@ sub _build_file {
 
     $pluggable->_template($args{name}, $template);
   }
-  my $filename = $pluggable->_mk_name($args{name});
+  my $filename = $pluggable->_mk_name(%args);
   my $fh;
   open $fh, ">$filename" 
-    or die "Can't open $args{name} file $filename: $!";
+    or die "Can't write to $args{name} file $filename: $!";
   print $fh  $template->fill_in(HASH=>$args{hash});
   close $fh;
  
@@ -157,9 +228,16 @@ sub _build_file {
   
 
 sub _mk_name {
-  my ($pluggable, $name) = @_;
+  my ($pluggable, %args) = @_;
   return File::Spec->catfile($pluggable->snapshots_to(), 
-                             "$name".$pluggable->_suffix.".html");
+                             $pluggable->_mk_short_name(%args));
+}
+
+sub _mk_short_name {
+  my ($pluggable, %args) = @_;
+  return $args{name} . "_" . $pluggable->_suffix . 
+         ($args{version} ? "-" . $args{version} . ".html"
+                         : ".html");
 }
 
 sub _template {
@@ -231,7 +309,7 @@ the request, but also
 
 =back
 
-The output is displayed in a frame, with the debug ingormation on the left
+The output is displayed in a frame, with the debug information on the left
 and the actual page HTML as fetched at the time of the snapshot on the right.
 
 =head1 INTERFACE 
@@ -243,9 +321,14 @@ Standard importation of methods into C<WWW::Mechanize::Pluggable>.
 =head2 snapshots_to($dir)
 
 Requires a directory to which the snapshots will be taken. 
+To separate different runs, a subdirectory of this directory
+will be created, using a human-readable form of the current
+time as part of the name.
 
 If this method is not called prior to the use of C<snapshot>,
-the system default temporary file directory is used.
+the system default temporary file directory is used. If no
+such directory is defined in the TMP or TMPDIR environment
+variables, C<snapshots_to> dies.
 
 =head2 snapshot
 
@@ -256,18 +339,57 @@ contained in the C<WWW::Mechanize::Pluggable> object.
 
 =over
 
-=item C<< Could not write to %s directory: %s >>
+=item C<< No TMPDIR/TEMP defined on this system! >>
 
-We attempted to take a snapshot, but we couldn't write the files to
+You called C<snapshots_to> without a temporary directory,
+but no system temporary directory name was available to the
+program. Either call C<snapshots_to> with a writeable 
+directory name, or set the TMP or TMPDIR environment 
+variable to reflect the desired name.
+
+=item C<< Couldn't create directory %s: %s >>
+
+The program couldn't create the directory you
+specified. A diagnostic follows the colon to 
+help you find out why not.
+
+=item C<< %s is not a directory >>
+
+The argument you supplied to C<snapshots_to>
+is not a directory.
+
+=item C<< No HTML output file name supplied >>
+
+Internal error: C<_build_file> wasn't given a 
+file into which output is to be saved. Please
+contact the author.
+
+=item C<< No customization hash supplied >>
+
+Internal error: C<_build_file> was not supplied
+with the information to fill out the template.
+Please contact the author.
+
+=item C<< Nonexistent template %s >>
+
+Internal error: C<_build_file> was supplied
+with a bad file template. Please contact the
+author.
+
+=item C<< Can't write to %s file %s: $! >>
+
+We attempted to take a snapshot, but we couldn't write the file to
 the selected temporary directory. The contents of C<$!> are appended
 to try to diagnose the error further.
 
 =back
 
-
 =head1 CONFIGURATION AND ENVIRONMENT
 
-WWW::Mechanize::Plugin::Snapshot requires no configuration files or environment variables.
+WWW::Mechanize::Plugin::Snapshot requires no configuration files.
+
+It needs the C<TMP> or C<TMPDIR> environment variable to select the
+system temporary directory if no argument is supplied to C<snapshots_to>.
 
 =head1 DEPENDENCIES
 

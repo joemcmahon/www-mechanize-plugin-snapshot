@@ -1,0 +1,16 @@
+# http://module-build.sourceforge.net/META-spec.html
+#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
+name:         WWW-Mechanize-Plugin-Snapshot
+version:      0.01
+version_from: lib/WWW/Mechanize/Plugin/Snapshot.pm
+installdirs:  site
+requires:
+    Data::Dumper:                  0
+    File::Path:                    0
+    Inline::Files:                 0
+    Test::More:                    0
+    Text::Template:                0
+    WWW::Mechanize::Pluggable:     0.09
+
+distribution_type: module
+generated_by: ExtUtils::MakeMaker version 6.28

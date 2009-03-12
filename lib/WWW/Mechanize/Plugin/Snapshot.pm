@@ -1,6 +1,6 @@
 package WWW::Mechanize::Plugin::Snapshot;
 
-our $VERSION = '0.15';
+our $VERSION = '0.16';
 
 use warnings;
 use strict;
@@ -15,7 +15,7 @@ use Text::Template;
 use Data::Dumper;
 
 my %template = (
-  vertical => {
+  horizontal => {
     frame =><<EOS,
 <html>
     
@@ -23,7 +23,7 @@ my %template = (
 </head>
 <frameset rows="36%,64%">
 <frame src="debug_[\$suffix]-[\$snap_count].html">
-<frame src="content_[\$suffix]-[\$snap_count].html">
+<frame src="content_[\$suffix]-[\$snap_count].[\$content_type]">
 </frameset>
 
 </html>
@@ -55,7 +55,7 @@ pre { font-family: courier font-size:50%}
 EOS
 },
 
-  horizontal => {
+  vertical => {
     frame =><<EOS,
 <html>
     
@@ -63,7 +63,7 @@ EOS
 </head>
 <frameset cols="36%,64%">
 <frame src="debug_[\$suffix]-[\$snap_count].html">
-<frame src="content_[\$suffix]-[\$snap_count].html">
+<frame src="content_[\$suffix]-[\$snap_count].[\$content_type]">
 </frameset>
 
 </html>
@@ -106,7 +106,7 @@ pre { font-family: courier font-size:50%}
 </STYLE>
 </head>
 <body>
-<h1>Pop up original page in <a href="content_[\$suffix]-[\$snap_count].html" target="_blank">another window</a>.</h1>
+<h1>Pop up original page in <a href="content_[\$suffix]-[\$snap_count].[\$content_type]" target="_blank">another window</a>.</h1>
 <iframe width="100%" height="90%" src="debug_[\$suffix]-[\$snap_count].html">
 </body>
 </html>
@@ -237,6 +237,10 @@ sub snapshot {
   my @template_text;
   $pluggable->_snapped;
 
+  # Determine if content is XML; markup is a little different
+  # if so.
+  my $is_xml = ($pluggable->content =~ /^<\?xml/);
+
   # Use passed-in suffix if available, and 
   # set it as the default suffix. If not,
   # continue using the one set up in snapshots_to.
@@ -251,6 +255,7 @@ sub snapshot {
     $pluggable->_build_file(name=>'frame',
                             version => $pluggable->_snap_count,
                             hash=>{suffix => $suffix,
+                                   content_type => ($is_xml ? 'xml' : 'html'),
                                    snap_count  => $pluggable->_snap_count()},
                           );
 
@@ -274,8 +279,8 @@ sub snapshot {
                                  suffix     => $suffix,
                                 }
                          ); 
-
   $pluggable->_build_file(name=>'content',
+                          content_type=> ($is_xml ? 'xml' : 'html'),
                           version => $pluggable->_snap_count,
                           hash=>{content    => $pluggable->content,
                                  suffix     => $suffix,
@@ -342,9 +347,10 @@ sub _mk_name {
 
 sub _mk_short_name {
   my ($pluggable, %args) = @_;
+  $args{content_type} = 'html' unless defined $args{content_type};
   return $args{name} . "_" . $pluggable->_suffix . 
-         ($args{version} ? "-" . $args{version} . ".html"
-                         : ".html");
+         ($args{version} ? "-$args{version}.$args{content_type}"
+                         : ".$args{content_type}");
 }
 
 sub _template {

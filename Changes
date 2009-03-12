@@ -1,5 +1,12 @@
 Revision history for WWW-Mechanize-Plugin-Snapshot
 
+0.16  Tue Mar 21 17:23:17 PST 2006
+	- added automatic type discovery for XML content.
+	  This allows XML returns to show properly in
+	  snapshots.
+	- reversed 'horizontal' and 'vertical' layouts
+	  to match the documentation (and common sense)
+
 0.15  Tue Mar 21 16:50:49 PST 2006
 	- change snapshot_layout to snap_layout for
 	  consistency with the simple_scan plugin

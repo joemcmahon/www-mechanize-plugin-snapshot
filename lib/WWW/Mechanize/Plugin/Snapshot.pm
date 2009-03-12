@@ -1,13 +1,14 @@
 package WWW::Mechanize::Plugin::Snapshot;
 
-our $VERSION = '0.19';
+our $VERSION = '0.20';
 
 use warnings;
 use strict;
 use Carp;
 
 use base qw(Class::Accessor::Fast);
-__PACKAGE__->mk_accessors(qw(_suffix snapshot_comment sub snap_prefix _run_tag _snap_count));
+__PACKAGE__->mk_accessors(qw(_snap_dir_made _suffix snapshot_comment 
+                              snap_prefix _run_tag _snap_count));
 
 use File::Path;
 use File::Spec;
@@ -155,6 +156,7 @@ sub init {
   *{caller() . "::_snapped"}         = \&_snapped;
   *{caller() . "::_snap_count"}      = \&_snap_count;
   *{caller() . "::snap_layout"}      = \&snap_layout;
+  *{caller() . "::_snap_dir_made"}   = \&_snap_dir_made;
 }
 
 sub _snapped {
@@ -195,13 +197,7 @@ sub snapshots_to {
     $snap_dir = File::Spec->catfile($snap_dir, $pluggable->_run_tag());
   }
 
-  if (!-e $snap_dir) {
-    eval { mkpath $snap_dir };
-    if ($@) {
-      die "Couldn't create directory $snap_dir: $@\n";
-    }
-  }
-  else {
+  if (-e $snap_dir) {
     die "$snap_dir is not a directory\n" 
       unless -d $snap_dir;
   }
@@ -250,6 +246,14 @@ sub snapshot {
   }
   else {
     $suffix = $pluggable->_suffix();
+  }
+
+  my $snap_dir = $pluggable->{SnapDirectory};
+  if (!-e $snap_dir) {
+    eval { mkpath $snap_dir };
+    if ($@) {
+      die "Couldn't create directory $snap_dir: $@\n";
+    }
   }
 
   my $frame_file = 

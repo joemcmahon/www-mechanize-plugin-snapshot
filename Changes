@@ -1,5 +1,8 @@
 Revision history for WWW-Mechanize-Plugin-Snapshot
 
+0.20  Thu Sep 21 16:56:33 PDT 2006
+	- Do not create snapshot directory until the first snapshot is taken
+
 0.19  Tue Apr 18 13:10:14 PDT 2006
 	- Added missing prereq for Class::Accessor
 	- Upgraded required version of WWW::Mechanize::Pluggable

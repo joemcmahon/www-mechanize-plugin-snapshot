@@ -1,5 +1,8 @@
 Revision history for WWW-Mechanize-Plugin-Snapshot
 
+0.18  Tue Apr 18 09:20:47 PDT 2006
+	- eliminate uninitialized variable warning on first snap
+
 0.17  Fri Apr 14 15:11:55 PDT 2006
 	- accidentally included pre-built man page, which confuses
 	  Cygwin mightily

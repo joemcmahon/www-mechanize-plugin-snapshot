@@ -1,6 +1,6 @@
 package WWW::Mechanize::Plugin::Snapshot;
 
-our $VERSION = '0.17';
+our $VERSION = '0.18';
 
 use warnings;
 use strict;
@@ -159,7 +159,8 @@ sub init {
 
 sub _snapped {
   my ($pluggable) = @_;
-  $pluggable->_snap_count($pluggable->_snap_count()+1);
+  my $current_count = $pluggable->_snap_count() || 0;
+  $pluggable->_snap_count($current_count+1);
 }
 
 sub snapshots_to {

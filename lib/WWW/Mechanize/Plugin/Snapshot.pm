@@ -1,6 +1,6 @@
 package WWW::Mechanize::Plugin::Snapshot;
 
-our $VERSION = '0.12';
+our $VERSION = '0.13';
 
 use warnings;
 use strict;
@@ -38,7 +38,7 @@ EOS
 <title>Page snapshot: debug info</title>
 <STYLE TYPE="text/css">
 <!--
-H1 { color: black; background: #eeeeee; font-size: 110%; font-family: impact, sans-serif }
+H1 { color: black; background: #eeeeee; font-size: 110%; font-family: verdana, helvetica, sans-serif }
 pre { font-family: courier font-size:50%}
 -->
 </STYLE>
@@ -92,7 +92,7 @@ sub snapshots_to {
     # defaults if possible
     if (!defined $pluggable->{SnapDirectory}) {
       $snap_dir = 
-         $ENV{TMPDIR} || $ENV{TEMP}||
+         $ENV{TMPDIR} || $ENV{TEMP}|| $ENV{TMP} ||
           die "No TMPDIR/TEMP defined on this system!\n";
 
       $snap_dir =

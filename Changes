@@ -1,5 +1,9 @@
 Revision history for WWW-Mechanize-Plugin-Snapshot
 
+0.13  Tue Dec  6 16:38:44 PST 2005
+	- change CSS in debug info to not use Impact
+	  (Users: "too clunky!"). Differing visions.
+
 0.12  Fri Dec  2 16:46:23 PST 2005
 	- Code is still too fast. (This is a problem?!)
 	  Changed to using a version counter that adds 

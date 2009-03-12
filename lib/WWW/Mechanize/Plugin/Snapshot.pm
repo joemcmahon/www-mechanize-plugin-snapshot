@@ -1,6 +1,6 @@
 package WWW::Mechanize::Plugin::Snapshot;
 
-our $VERSION = '0.14';
+our $VERSION = '0.15';
 
 use warnings;
 use strict;
@@ -154,7 +154,7 @@ sub init {
   *{caller() . "::_run_tag"}         = \&_run_tag;
   *{caller() . "::_snapped"}         = \&_snapped;
   *{caller() . "::_snap_count"}      = \&_snap_count;
-  *{caller() . "::snapshot_layout"}  = \&snapshot_layout;
+  *{caller() . "::snap_layout"}      = \&snap_layout;
 }
 
 sub _snapped {
@@ -209,7 +209,7 @@ sub snapshots_to {
   return $snap_dir;
 }
 
-sub snapshot_layout {
+sub snap_layout {
   my ($self, $layout) = @_;
   my $current = $self->{SnapshotLayout} || '';
 
@@ -315,11 +315,11 @@ sub _build_file {
     # Done this way so we don't have to rebuild the templates
     # every time through.
     die "Nonexistent template $args{name}\n" 
-      unless $template{$pluggable->snapshot_layout()}{$args{name}}; 
+      unless $template{$pluggable->snap_layout()}{$args{name}}; 
 
     $template = Text::Template->new(TYPE=>'ARRAY', 
                                     DELIMITERS=>['[',']'],
-                                    SOURCE=>[$template{$pluggable->snapshot_layout()}{$args{name}}]);
+                                    SOURCE=>[$template{$pluggable->snap_layout()}{$args{name}}]);
 
     $pluggable->_template($args{name}, $template);
   }
@@ -442,7 +442,7 @@ variables, C<snapshots_to> dies.
 Takes a snapshot of the current state of the C<WWW::Mechanize> object
 contained in the C<WWW::Mechanize::Pluggable> object.
 
-=head2 snapshot_layout
+=head2 snap_layout
 
 Allows you to choose an alternative layout for the snapshots. Current
 options are "horizontal" and "vertical" (the default).

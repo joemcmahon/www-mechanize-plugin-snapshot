@@ -59,7 +59,7 @@ SKIP: {
     unlink $_;
   }
   my @foo;
-  $mech->snapshot_layout("horizontal");
+  $mech->snap_layout("horizontal");
   my $location = $mech->snapshot("Home sweet home");
   is scalar (@foo = glob(File::Spec->catfile($snapshot_dir, "*.html"))), 3;
   my $frame_filename_regex = File::Spec->catfile($ENV{TMP}, 'run_'.$suffix, 'frame_.*?.html');
@@ -100,7 +100,7 @@ SKIP: {
     unlink $_;
   }
   my @foo;
-  $mech->snapshot_layout("popup");
+  $mech->snap_layout("popup");
   my $location = $mech->snapshot("Home sweet home");
   is scalar (@foo = glob(File::Spec->catfile($snapshot_dir, "*.html"))), 3;
   my $frame_filename_regex = File::Spec->catfile($ENV{TMP}, 'run_'.$suffix, 'frame_.*?.html');

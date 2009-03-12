@@ -1,5 +1,9 @@
 Revision history for WWW-Mechanize-Plugin-Snapshot
 
+0.15  Tue Mar 21 16:50:49 PST 2006
+	- change snapshot_layout to snap_layout for
+	  consistency with the simple_scan plugin
+
 0.14  Mon Mar 20 17:31:32 PST 2006
 	- add option to allow different layouts to
 	  be used (still predefined, but you get a choice)

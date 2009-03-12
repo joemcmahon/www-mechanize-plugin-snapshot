@@ -1,5 +1,9 @@
 Revision history for WWW-Mechanize-Plugin-Snapshot
 
+0.19  Tue Apr 18 13:10:14 PDT 2006
+	- Added missing prereq for Class::Accessor
+	- Upgraded required version of WWW::Mechanize::Pluggable
+
 0.18  Tue Apr 18 09:20:47 PDT 2006
 	- eliminate uninitialized variable warning on first snap
 

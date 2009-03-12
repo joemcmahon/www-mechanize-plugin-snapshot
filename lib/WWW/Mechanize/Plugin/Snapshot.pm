@@ -1,13 +1,13 @@
 package WWW::Mechanize::Plugin::Snapshot;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use warnings;
 use strict;
 use Carp;
 
 use base qw(Class::Accessor::Fast);
-__PACKAGE__->mk_accessors(qw(_suffix));
+__PACKAGE__->mk_accessors(qw(_suffix snapshot_comment));
 
 use File::Path;
 use Inline::Files;
@@ -16,12 +16,13 @@ use Data::Dumper;
 
 sub init {
   no strict 'refs';
-  *{caller() . "::snapshots_to"} = \&snapshots_to;
-  *{caller() . "::snapshot"}     = \&snapshot;
-  *{caller() . "::dumpvar"}      = \&dumpvar;
-  *{caller() . "::_suffix"}      = \&_suffix;
-  *{caller() . "::_mk_name"}     = \&_mk_name;
-  *{caller() . "::_build_file"}  = \&_build_file;
+  *{caller() . "::snapshots_to"}     = \&snapshots_to;
+  *{caller() . "::snapshot"}         = \&snapshot;
+  *{caller() . "::_suffix"}          = \&_suffix;
+  *{caller() . "::snapshot_comment"} = \&snapshot_comment;
+  *{caller() . "::_mk_name"}         = \&_mk_name;
+  *{caller() . "::_build_file"}      = \&_build_file;
+  *{caller() . "::_template"}        = \&_template;
 }
 
 sub snapshots_to {
@@ -45,42 +46,17 @@ sub snapshots_to {
 }
 
 sub snapshot {
-  my ($pluggable, $comment) = @_;
+  my ($pluggable, $comment, $suffix) = @_;
   local $_;
   my @template_text;
 
-  my $suffix = $pluggable->_suffix(time);
+  $suffix = $pluggable->_suffix($suffix||time);
 
   my $frame_file = 
     $pluggable->_build_file(name=>'frame',
                            fh  =>*FRAME,
                            hash=>{suffix => $suffix},
                           );
-
-  $pluggable->_build_file(name=>'url',
-                         fh  =>*URL,
-                         hash=>{url => $pluggable->base},
-                        );
-
-  $pluggable->_build_file(name=>'comment',
-                         fh  =>*COMMENT,
-                         hash=>{comment => $comment},
-                        );
-
-  $pluggable->_build_file(name=>'content',
-                         fh  =>*CONTENT,
-                         hash=>{content => $pluggable->content(base_href=>$pluggable->base)},
-                        );
-
-  $pluggable->_build_file(name=>"request",
-                          fh=>*REQUEST,
-                          hash=>{dump => Dumper($pluggable->mech->{req})}
-                         ); 
-
-  $pluggable->_build_file(name=>"jar",
-                          fh=>*JAR,
-                          hash=>{dump => Dumper($pluggable->cookie_jar)}
-                         ); 
 
   # We need to nuke stuff out of the response, but we don't want to
   # damage the original. Clone it, and then discard stuff from the 
@@ -89,12 +65,24 @@ sub snapshot {
   delete $res{'_content'};
   delete $res{'_request'};
   
-  $pluggable->_build_file(name=>"response",
-                          fh=>*RESPONSE,
-                          hash=>{dump => Dumper(\%res)}
+  $pluggable->_build_file(name=>'debug',
+                         fh  =>*DEBUG,
+                         hash=>{url     => $pluggable->base,
+                                comment => ($comment || 
+                                            $pluggable->snapshot_comment || 
+                                            "No comment specified"),
+                                content => $pluggable->content(base_href=>$pluggable->base),
+                                req     => Dumper($pluggable->mech->{req}),
+                                res     => Dumper(\%res),
+                                jar     => Dumper($pluggable->cookie_jar),
+                               }
                          ); 
 
-  
+  $pluggable->_build_file(name=>'content',
+                          fh  =>*CONTENT,
+                          hash=>{content => $pluggable->content},
+                          );
+
   return $frame_file;
 }
 
@@ -108,9 +96,17 @@ sub _build_file {
   die "No customization hash supplied"
     unless $args{hash};
   my $local_fh = $args{fh};
+  my $template;
 
-  seek $args{fh}, 0,0;
-  my $template = Text::Template->new(TYPE=>'ARRAY', SOURCE=>[<$local_fh>]);
+  if (!($template = $pluggable->_template($args{name}))) {
+    # Done this way so we don't have to rebuild the templates
+    # every time through. Also avoids annoying Inline::Files
+    # behavior that makes it hard to reuse the template files.
+    $template = Text::Template->new(TYPE=>'ARRAY', 
+                                    DELIMITERS=>['[',']'],
+                                    SOURCE=>[<$local_fh>]);
+    $pluggable->_template($args{name}, $template);
+  }
   my $filename = $pluggable->_mk_name($args{name});
   my $fh;
   open $fh, ">$filename" 
@@ -128,37 +124,50 @@ sub _mk_name {
                              "$name".$pluggable->_suffix.".html");
 }
 
+sub _template {
+  my ($pluggable, $template_name, $template) = @_;
+
+  die "Can't access undefined template!" unless defined $template_name;
+
+  if (defined $template_name and defined $template) {
+    $pluggable->{SnapTemplates}->{$template_name} = $template;
+  }
+  return $pluggable->{SnapTemplates}->{$template_name};
+}
+
 1; # Magic true value required at end of module
 __FRAME__
 <html>
 
-<head><title>Page snapshot: {$formatted_date}</title>
+<head><title>Page snapshot: [$formatted_date]</title>
 </head>
 <frameset cols="36%,64%">
-<frameset rows="3%,10%,20%,42%,25%">
-<frame src="url{$suffix}.html">
-<frame src="comment{$suffix}.html">
-<frame src="request{$suffix}.html">
-<frame src="response{$suffix}.html">
-<frame src="jar{$suffix}.html">
-</frameset>
-<frameset rows="100%">
-<frame src="content{$suffix}.html">
+<frame src="debug[$suffix].html">
+<frame src="content[$suffix].html">
 </frameset>
 
 </html>
-__COMMENT__
-<html><head><title>Page snapshot: user comment</title></head><body>{$comment}</body></html>
-__URL__
-<html><head><title>Page snapshot: URL</title></head><body><tt>{$url}</tt></body></html>
-__REQUEST__
-<html><head><title>Page snapshot: HTTP request</title></head><body><pre>{$dump}</pre></body></html>
-__RESPONSE__
-<html><head><title>Page snapshot: HTTP request</title></head><body><pre>{$dump}</pre></body></html>
-__JAR__
-<html><head><title>Page snapshot: Cookie jar</title></head><body><pre>{$dump}</pre></body></html>
+__DEBUG__
+<html>
+<head>
+<title>Page snapshot: debug info</title>
+<STYLE TYPE="text/css">
+<!--
+H1 { color: white; background: violet; font-size: 110%; font-family: impact, sans-serif }
+pre { font-family: courier font-size:50%}
+-->
+</STYLE>
+</head>
+<body>
+<h1>Description</h1><div class="comment">[$comment]</div>
+<h1>Original URL</h1><div class="url">[$url]</div>
+<h1>HTTP request</h1><div class="request"><pre>[$req]</pre></div>
+<h1>HTTP response</h1><div class="response"><pre>[$res]</pre></div>
+<h1>Cookie jar</h1><div class="jar"><pre>[$jar]</pre></div>
+</body>
+</html>
 __CONTENT__
-{$content}
+[$content]
 __END__
 
 =head1 NAME
@@ -176,9 +185,22 @@ This document describes WWW::Mechanize::Plugin::Snapshot version 0.01
     my $mech->new;
     $mech->snapshots_to("/some/file/path");
     $mech->get("http://problematic.org");
+    # Create timestamped snapshot
     $snapshot_file_name = $mech->snapshot("Accessing problematic.org");
-    # $snapshot file name is the name of a HTML file showing 
-    # the request and the response
+
+    # Create user-named snapshot
+    $foo_file = $mech->snapshot("Special file", "foo");
+
+    # Preset the comment:
+    $mech->snapshot_comment("Failed during test set 1");
+
+    # Resulting file uses the comment preset before the 
+    # snapshot call.
+    $standard_name = $mech->snapshot();
+
+    # Use a different filename. keeping the preset comment:
+    $foo_file = $mech->snapshot(undef, "foo");
+   
 
 =head1 DESCRIPTION
 
@@ -203,9 +225,8 @@ the request, but also
 
 =back
 
-The returned page is displayed as a part of a fram, allowing you to see the
-entire page content and to view the source separately from the containing
-frame.
+The output is displayed in a frame, with the debug ingormation on the left
+and the actual page HTML as fetched at the time of the snapshot on the right.
 
 =head1 INTERFACE 
 

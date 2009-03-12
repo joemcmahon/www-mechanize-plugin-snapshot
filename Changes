@@ -1,5 +1,10 @@
 Revision history for WWW-Mechanize-Plugin-Snapshot
 
-0.0.1  Wed Nov  2 12:21:43 2005
-       Initial release.
+0.02  Fri Nov  4 14:06:13 2005 
+	- Updated interface
+	  -- Added snapshot_comment: prepost a comment
+	  -- Added optional filename arg to snapshot()
+
+0.01  Wed Nov  2 12:21:43 2005
+	- Initial release.
 

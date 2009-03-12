@@ -9,5 +9,7 @@ t/00.load.t
 t/01basic.t
 t/02preset.t
 t/03leader.t
+t/04contents.t
+t/05layout.t
 t/pod-coverage.t
 t/pod.t

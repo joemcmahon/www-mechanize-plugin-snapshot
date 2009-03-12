@@ -12,7 +12,6 @@ SKIP: {
     unless $ENV{TMP} || $ENV{TMPDIR};
   my $snapshot_dir = $mech->snapshots_to();
   ok $snapshot_dir, "got a default snapshot dir";
-  diag $snapshot_dir;
 
   $mech->get($ENV{URL} || "http://perl.org");
   for (glob(File::Spec->catfile($snapshot_dir, "*.html"))) {
@@ -30,4 +29,5 @@ SKIP: {
   }
   close GREP;
   is $hits, 1, "found expected comment";
+  system "rm -rf $snapshot_dir" unless $ENV{RETAIN};
 }

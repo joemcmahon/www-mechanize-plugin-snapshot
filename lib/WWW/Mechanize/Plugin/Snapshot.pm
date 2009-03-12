@@ -1,6 +1,6 @@
 package WWW::Mechanize::Plugin::Snapshot;
 
-our $VERSION = '0.13';
+our $VERSION = '0.14';
 
 use warnings;
 use strict;
@@ -15,12 +15,13 @@ use Text::Template;
 use Data::Dumper;
 
 my %template = (
-  frame =><<EOS,
+  vertical => {
+    frame =><<EOS,
 <html>
     
 <head><title>Page snapshot: [\$formatted_date]</title>
 </head>
-<frameset cols="36%,64%">
+<frameset rows="36%,64%">
 <frame src="debug_[\$suffix]-[\$snap_count].html">
 <frame src="content_[\$suffix]-[\$snap_count].html">
 </frameset>
@@ -28,11 +29,11 @@ my %template = (
 </html>
 EOS
 
-  content=><<EOS,
+    content=><<EOS,
 [\$content]
 EOS
 
- debug=><<EOS,
+   debug=><<EOS,
 <html>
 <head>
 <title>Page snapshot: debug info</title>
@@ -52,6 +53,90 @@ pre { font-family: courier font-size:50%}
 </body>
 </html>
 EOS
+},
+
+  horizontal => {
+    frame =><<EOS,
+<html>
+    
+<head><title>Page snapshot: [\$formatted_date]</title>
+</head>
+<frameset cols="36%,64%">
+<frame src="debug_[\$suffix]-[\$snap_count].html">
+<frame src="content_[\$suffix]-[\$snap_count].html">
+</frameset>
+
+</html>
+EOS
+
+    content=><<EOS,
+[\$content]
+EOS
+
+    debug=><<EOS,
+<html>
+<head>
+<title>Page snapshot: debug info</title>
+<STYLE TYPE="text/css">
+<!--
+H1 { color: black; background: #eeeeee; font-size: 110%; font-family: verdana, helvetica, sans-serif }
+pre { font-family: courier font-size:50%}
+-->
+</STYLE>
+</head>
+<body>
+<h1>Description</h1><div class="comment">[\$comment]</div>
+<h1>Original URL</h1><div class="url">[\$url]</div>
+<h1>HTTP request</h1><div class="request"><pre>[\$req]</pre></div>
+<h1>HTTP response</h1><div class="response"><pre>[\$res]</pre></div>
+<h1>Cookie jar</h1><div class="jar"><pre>[\$jar]</pre></div>
+</body>
+</html>
+EOS
+},
+
+  popup => {
+    frame =><<EOS,
+<head><title>Page snapshot: </title>
+<STYLE TYPE="text/css">
+<!--
+H1 { color: black; background: #eeeeee; font-size: 110%; font-family: verdana, helvetica, sans-serif }
+pre { font-family: courier font-size:50%}
+-->
+</STYLE>
+</head>
+<body>
+<h1>Pop up original page in <a href="content_[\$suffix]-[\$snap_count].html" target="_blank">another window</a>.</h1>
+<iframe width="100%" height="90%" src="debug_[\$suffix]-[\$snap_count].html">
+</body>
+</html>
+EOS
+
+    content=><<EOS,
+[\$content]
+EOS
+
+   debug=><<EOS,
+<html>
+<head>
+<title>Page snapshot: debug info</title>
+<STYLE TYPE="text/css">
+<!--
+H1 { color: black; background: #eeeeee; font-size: 110%; font-family: verdana, helvetica, sans-serif }
+pre { font-family: courier font-size:50%}
+-->
+</STYLE>
+</head>
+<body>
+<h1>Description</h1><div class="comment">[\$comment]</div>
+<h1>Original URL</h1><div class="url">[\$url]</div>
+<h1>HTTP request</h1><div class="request"><pre>[\$req]</pre></div>
+<h1>HTTP response</h1><div class="response"><pre>[\$res]</pre></div>
+<h1>Cookie jar</h1><div class="jar"><pre>[\$jar]</pre></div>
+</body>
+</html>
+EOS
+},
 
 );
 
@@ -69,6 +154,7 @@ sub init {
   *{caller() . "::_run_tag"}         = \&_run_tag;
   *{caller() . "::_snapped"}         = \&_snapped;
   *{caller() . "::_snap_count"}      = \&_snap_count;
+  *{caller() . "::snapshot_layout"}  = \&snapshot_layout;
 }
 
 sub _snapped {
@@ -88,7 +174,7 @@ sub snapshots_to {
     unless defined $pluggable->_snap_count();
 
   if (!defined $snap_dir) {
-    # No argument, grap existing or create from
+    # No argument, grab existing or create from
     # defaults if possible
     if (!defined $pluggable->{SnapDirectory}) {
       $snap_dir = 
@@ -121,6 +207,28 @@ sub snapshots_to {
 
   $pluggable->{SnapDirectory} = $snap_dir;
   return $snap_dir;
+}
+
+sub snapshot_layout {
+  my ($self, $layout) = @_;
+  my $current = $self->{SnapshotLayout} || '';
+
+  # Set the layout if one was supplied.
+  if (defined $layout) {
+    $self->{SnapshotLayout} = $layout;
+  }
+
+  # Set to default if never initialized or
+  # if the new layout doesn't correspond to reality.
+  $self->{SnapshotLayout} = 'vertical'
+    unless defined $self->{SnapshotLayout} and
+           exists $template{$self->{SnapshotLayout}};
+
+  # Blow away cached templates if layout is changed
+  $self->{SnapTemplates} = {} 
+    if $self->{SnapshotLayout} ne $current;
+
+  return $self->{SnapshotLayout};
 }
 
 sub snapshot {
@@ -205,14 +313,13 @@ sub _build_file {
 
   if (!($template = $pluggable->_template($args{name}))) {
     # Done this way so we don't have to rebuild the templates
-    # every time through. Also avoids annoying Inline::Files
-    # behavior that makes it hard to reuse the template files.
+    # every time through.
     die "Nonexistent template $args{name}\n" 
-      unless $template{$args{name}}; 
+      unless $template{$pluggable->snapshot_layout()}{$args{name}}; 
 
     $template = Text::Template->new(TYPE=>'ARRAY', 
                                     DELIMITERS=>['[',']'],
-                                    SOURCE=>[$template{$args{name}}]);
+                                    SOURCE=>[$template{$pluggable->snapshot_layout()}{$args{name}}]);
 
     $pluggable->_template($args{name}, $template);
   }
@@ -334,6 +441,11 @@ variables, C<snapshots_to> dies.
 
 Takes a snapshot of the current state of the C<WWW::Mechanize> object
 contained in the C<WWW::Mechanize::Pluggable> object.
+
+=head2 snapshot_layout
+
+Allows you to choose an alternative layout for the snapshots. Current
+options are "horizontal" and "vertical" (the default).
 
 =head1 DIAGNOSTICS
 

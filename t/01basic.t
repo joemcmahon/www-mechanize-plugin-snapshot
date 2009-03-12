@@ -11,7 +11,6 @@ SKIP: {
     unless $ENV{TMPDIR} || $ENV{TMP};
   my $snapshot_dir = $mech->snapshots_to();
   ok $snapshot_dir, "got a default snapshot dir";
-  diag $snapshot_dir;
 
   $mech->get($ENV{URL} || "http://perl.org");
   for (glob(File::Spec->catfile($snapshot_dir, "*.html"))) {
@@ -23,5 +22,5 @@ SKIP: {
 
   $mech->snapshot("Zorch sweet zorch", "zorch");
   is scalar (@foo = glob(File::Spec->catfile($snapshot_dir, "*zorch-?.html"))), 3;
+  system "rm -rf $snapshot_dir" unless $ENV{RETAIN};
 }
-

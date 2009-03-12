@@ -1,6 +1,6 @@
 package WWW::Mechanize::Plugin::Snapshot;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use warnings;
 use strict;
@@ -10,9 +10,49 @@ use base qw(Class::Accessor::Fast);
 __PACKAGE__->mk_accessors(qw(_suffix snapshot_comment));
 
 use File::Path;
-use Inline::Files;
 use Text::Template;
 use Data::Dumper;
+
+my %template = (
+  frame =><<EOS,
+<html>
+    
+<head><title>Page snapshot: [\$formatted_date]</title>
+</head>
+<frameset cols="36%,64%">
+<frame src="debug[\$suffix].html">
+<frame src="content[\$suffix].html">
+</frameset>
+
+</html>
+EOS
+
+  content=><<EOS,
+[\$content]
+EOS
+
+ debug=><<EOS,
+<html>
+<head>
+<title>Page snapshot: debug info</title>
+<STYLE TYPE="text/css">
+<!--
+H1 { color: white; background: violet; font-size: 110%; font-family: impact, sans-serif }
+pre { font-family: courier font-size:50%}
+-->
+</STYLE>
+</head>
+<body>
+<h1>Description</h1><div class="comment">[\$comment]</div>
+<h1>Original URL</h1><div class="url">[\$url]</div>
+<h1>HTTP request</h1><div class="request"><pre>[\$req]</pre></div>
+<h1>HTTP response</h1><div class="response"><pre>[\$res]</pre></div>
+<h1>Cookie jar</h1><div class="jar"><pre>[\$jar]</pre></div>
+</body>
+</html>
+EOS
+
+);
 
 sub init {
   no strict 'refs';
@@ -54,8 +94,7 @@ sub snapshot {
 
   my $frame_file = 
     $pluggable->_build_file(name=>'frame',
-                           fh  =>*FRAME,
-                           hash=>{suffix => $suffix},
+                            hash=>{suffix => $suffix},
                           );
 
   # We need to nuke stuff out of the response, but we don't want to
@@ -66,20 +105,18 @@ sub snapshot {
   delete $res{'_request'};
   
   $pluggable->_build_file(name=>'debug',
-                         fh  =>*DEBUG,
-                         hash=>{url     => $pluggable->base,
-                                comment => ($comment || 
-                                            $pluggable->snapshot_comment || 
-                                            "No comment specified"),
-                                content => $pluggable->content(base_href=>$pluggable->base),
-                                req     => Dumper($pluggable->mech->{req}),
-                                res     => Dumper(\%res),
-                                jar     => Dumper($pluggable->cookie_jar),
-                               }
+                          hash=>{url     => $pluggable->base,
+                                 comment => ($comment || 
+                                             $pluggable->snapshot_comment || 
+                                             "No comment specified"),
+                                 content => $pluggable->content(base_href=>$pluggable->base),
+                                 req     => Dumper($pluggable->mech->{req}),
+                                 res     => Dumper(\%res),
+                                 jar     => Dumper($pluggable->cookie_jar),
+                                }
                          ); 
 
   $pluggable->_build_file(name=>'content',
-                          fh  =>*CONTENT,
                           hash=>{content => $pluggable->content},
                           );
 
@@ -91,20 +128,21 @@ sub _build_file {
 
   die "No HTML output file name supplied" 
     unless defined $args{name};
-  die "No template filehandle supplied" 
-    unless defined $args{fh};
   die "No customization hash supplied"
     unless $args{hash};
-  my $local_fh = $args{fh};
   my $template;
 
   if (!($template = $pluggable->_template($args{name}))) {
     # Done this way so we don't have to rebuild the templates
     # every time through. Also avoids annoying Inline::Files
     # behavior that makes it hard to reuse the template files.
+    die "Nonexistent template $args{name}\n" 
+      unless $template{$args{name}}; 
+
     $template = Text::Template->new(TYPE=>'ARRAY', 
                                     DELIMITERS=>['[',']'],
-                                    SOURCE=>[<$local_fh>]);
+                                    SOURCE=>[$template{$args{name}}]);
+
     $pluggable->_template($args{name}, $template);
   }
   my $filename = $pluggable->_mk_name($args{name});
@@ -136,38 +174,6 @@ sub _template {
 }
 
 1; # Magic true value required at end of module
-__FRAME__
-<html>
-
-<head><title>Page snapshot: [$formatted_date]</title>
-</head>
-<frameset cols="36%,64%">
-<frame src="debug[$suffix].html">
-<frame src="content[$suffix].html">
-</frameset>
-
-</html>
-__DEBUG__
-<html>
-<head>
-<title>Page snapshot: debug info</title>
-<STYLE TYPE="text/css">
-<!--
-H1 { color: white; background: violet; font-size: 110%; font-family: impact, sans-serif }
-pre { font-family: courier font-size:50%}
--->
-</STYLE>
-</head>
-<body>
-<h1>Description</h1><div class="comment">[$comment]</div>
-<h1>Original URL</h1><div class="url">[$url]</div>
-<h1>HTTP request</h1><div class="request"><pre>[$req]</pre></div>
-<h1>HTTP response</h1><div class="response"><pre>[$res]</pre></div>
-<h1>Cookie jar</h1><div class="jar"><pre>[$jar]</pre></div>
-</body>
-</html>
-__CONTENT__
-[$content]
 __END__
 
 =head1 NAME

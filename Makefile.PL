@@ -11,7 +11,6 @@ WriteMakefile(
     PL_FILES            => {},
     PREREQ_PM => {
         'Test::More' => 0,
-        'Inline::Files' => 0,
         'Data::Dumper' => 0,
         'Text::Template' => 0,
         'File::Path' => 0,

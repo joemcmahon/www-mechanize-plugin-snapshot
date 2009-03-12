@@ -1,5 +1,9 @@
 Revision history for WWW-Mechanize-Plugin-Snapshot
 
+0.03  Tue Nov 22 13:07:30 2005
+	- remove Inline::Files dependency; not 
+	  dependable enough
+
 0.02  Fri Nov  4 14:06:13 2005 
 	- Updated interface
 	  -- Added snapshot_comment: prepost a comment

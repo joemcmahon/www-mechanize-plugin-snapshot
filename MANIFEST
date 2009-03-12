@@ -1,7 +1,6 @@
 Changes
 lib/WWW/Mechanize/Plugin/Snapshot.pm
 Makefile.PL
-man/man3/WWW::Mechanize::Plugin::Snapshot.3
 MANIFEST
 META.yml			# Will be created by "make dist"
 README

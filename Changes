@@ -1,5 +1,10 @@
 Revision history for WWW-Mechanize-Plugin-Snapshot
 
+0.17  Fri Apr 14 15:11:55 PDT 2006
+	- accidentally included pre-built man page, which confuses
+	  Cygwin mightily
+	- test count off by 1 in XML tests
+
 0.16  Tue Mar 21 17:23:17 PST 2006
 	- added automatic type discovery for XML content.
 	  This allows XML returns to show properly in

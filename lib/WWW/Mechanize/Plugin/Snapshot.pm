@@ -1,6 +1,6 @@
 package WWW::Mechanize::Plugin::Snapshot;
 
-our $VERSION = '0.16';
+our $VERSION = '0.17';
 
 use warnings;
 use strict;
